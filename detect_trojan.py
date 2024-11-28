@@ -159,7 +159,7 @@ def extract_all_features(packets):
 # Load trained LightGBM model
 model = joblib.load("./lgbm_model.pkl")
 
-# Predefined URL for testing
+# URL for testing
 url = "wikipedia.org"
 ip = resolve_url_to_ip(url)
 
