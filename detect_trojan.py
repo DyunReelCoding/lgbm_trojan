@@ -4,12 +4,22 @@ from scapy.all import sniff, TCP
 import joblib
 from scapy.config import conf
 from scapy.all import sniff
+import socket
+
 conf.use_pcap = True
 
 def packet_callback(packet):
     print(packet.summary())
 
 sniff(count=10, prn=packet_callback)
+
+def resolve_url_to_ip(url):
+    try:
+        ip = socket.gethostbyname(url)
+        return ip
+    except socket.gaierror:
+        print(f"Could not resolve {url} to an IP address.")
+        return None
 
 # Extract all 80 features
 def extract_all_features(packets):
@@ -145,18 +155,25 @@ def extract_all_features(packets):
     features["Idle Min"] = min(idle_times, default=0)
 
     return features
-# Load trained LGBM model
+
+# Load trained LightGBM model
 model = joblib.load("./lgbm_model.pkl")
 
-#packet capture from a test website (wikipedia.org)
-packets = sniff(count=10, filter="tcp port 443 and ip host wikipedia.org")
+# Predefined URL for testing
+url = "wikipedia.org"
+ip = resolve_url_to_ip(url)
 
-
-extracted_features = extract_all_features(packets)
-
-# Convert features to DataFrame git init
-feature_df = pd.DataFrame([extracted_features])
-
-# Make prediction
-prediction = model.predict(feature_df)
-print("Trojan" if prediction[0] == 1 else "Safe")
+if ip:
+    print(f"Resolved {url} to {ip}. Capturing packets...")
+    packets = sniff(count=10, filter=f"tcp port 443 and ip host {ip}", prn=packet_callback)
+    
+    extracted_features = extract_all_features(packets)
+    
+    # Convert features to DataFrame
+    feature_df = pd.DataFrame([extracted_features])
+    
+    # Make prediction
+    prediction = model.predict(feature_df)
+    print("Trojan" if prediction[0] == 1 else "Safe")
+else:
+    print("Failed to analyze the URL. Please check the URL and try again.")
